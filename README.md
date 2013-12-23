@@ -3,16 +3,16 @@ lc
 
 LC project
 
-== Info ==
+= Info =
 * 'results' folder contains weka dataset and some stats on full data & sampled data
 * 'code/resources' contains the Json dump of the Downloader.
 
-== Run ==
+= Run =
 
 * Run 'stats.py' to get simple stats on downloader data. 
 * Run 'weka_converter.py' to generate weka ARFF file from API downloader data.
 
-== Prerequisites ==
+= Prerequisites =
 
 Install modules :
 * numpy
@@ -23,12 +23,12 @@ Install modules :
 
 Setup conf file 'lc_conf'
 
-== Configuration == 
+= Configuration = 
 
 The configuration file 'lc_conf' contains the parameters used by 
 the modules 'stats.py' and 'weka_converter.py' :
 
-=== WEKA-specific parameters ===
+== WEKA-specific parameters ==
 
 Attributes are the are the columns in the dataset to analyze.
 You can have NOMINAL or NUMERIC attributes in Weka.
@@ -48,7 +48,7 @@ You can have NOMINAL or NUMERIC attributes in Weka.
 * NUMERIC_ATTRIBUTES_METRICS is used to set the unit of each metric of NUMERIC_ATTRIBUTES_NAMES. /!\ list should match with METRICS order.
 
 
-=== Other parameters ===
+== Other parameters ==
 
 * INCLUDE_NBY is used to include or not the NBY class in the dataset to analyze.
 * MAX_NB_BUCKETS to modify the max nb of buckets that will be generated for each continuous metric of the dataset (the goal being to discretize them).
