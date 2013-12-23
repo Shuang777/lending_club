@@ -31,7 +31,7 @@ the modules _stats.py_ and _weka_converter.py_ :
 Attributes are the are the columns in the dataset to analyze.
 You can have NOMINAL or NUMERIC attributes in Weka.
 
- - **NOMINAL_ATTRIBUTES_NAMES** are the attributes with discreet values. You must list the nominals values. The nominal values can't be modified. See *CLASS_NOMINAL_VALUES* and *LOAN_GRADE_NOMINAL_VALUES below* :
+ - **NOMINAL_ATTRIBUTES_NAMES** are the attributes with discreet values. You must list the nominals values. The nominal values can't be modified. See **CLASS_NOMINAL_VALUES** and **LOAN_GRADE_NOMINAL_VALUES** below :
 
  - **CLASS_NOMINAL_VALUES** cannot be changed. This parameter must be set to ['B', 'NB', 'NBY', 'C']. Those are the class labels used in the Weka dataset. 
     Class Labels Description :
