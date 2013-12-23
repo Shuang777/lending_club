@@ -2,8 +2,8 @@ LC project
 ==
 
 # Info 
- - *data* folder contains weka dataset and some stats on full data &  sampled data
- - *resources* contains the Json dump of the Downloader & q sampled version.
+ - *data* folder contains Weka dataset + some stats on full data &  sampled data
+ - *resources* contains the Json dump of the Downloader & a sampled version.
 
 # Run
 
