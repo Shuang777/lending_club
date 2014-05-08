@@ -34,9 +34,8 @@ class WekaConverter(object):
 		 	loanGradeNominalValues = globals()["LOAN_GRADE_NOMINAL_VALUES"]
 		 	numericAttributesNames = globals()["NUMERIC_ATTRIBUTES_NAMES"]
 		 	nominalAttributesNames = globals()["NOMINAL_ATTRIBUTES_NAMES"]
-		 	includeNBY = globals()["INCLUDE_NBY"]
 		 	wekaFile = globals()["WEKA_FILE"]
-			return 	(fileToConvert, classNominalValues, loanGradeNominalValues, numericAttributesNames, nominalAttributesNames, includeNBY, wekaFile)
+			return 	(fileToConvert, classNominalValues, loanGradeNominalValues, numericAttributesNames, nominalAttributesNames, wekaFile)
 		except KeyError, error:
 			print "Missing key %s in the configufation file"
 
@@ -75,7 +74,7 @@ class WekaConverter(object):
 		arff.dump(open(wekaFile, 'w'), data)
 
 
-	def prepareWekaData(self, apiDataConverted,  classNominalValues, numericAttributesNames, nominalAttributesNames ):
+	def prepareWekaData(self, apiDataConverted, numericAttributesNames, nominalAttributesNames ):
 		"""
 		Prepare timeserie for Weka ARFF file generation
 
@@ -105,13 +104,13 @@ class WekaConverter(object):
 
 		return wekaData
 
-	def convertToWeka(self, fileToConvert, classNominalValues, loanGradeNominalValues, numericAttributesNames, nominalAttributesNames, includeNBY, wekaFile):
+	def convertToWeka(self, fileToConvert, classNominalValues, loanGradeNominalValues, numericAttributesNames, nominalAttributesNames, wekaFile):
 		""" Generate Weka ARFF file from API downloader data"""
 
 		converter = Converter()
-		apiDataConverted = converter.convertDataFromFile(fileToConvert, includeNBY)
+		apiDataConverted = converter.convertDataFromFile(fileToConvert)
 
-		data = self.prepareWekaData(apiDataConverted,  classNominalValues, numericAttributesNames, nominalAttributesNames)
+		data = self.prepareWekaData(apiDataConverted, numericAttributesNames, nominalAttributesNames)
 
 		dataset = {}
 
@@ -144,10 +143,11 @@ class WekaConverter(object):
 		 loanGradeNominalValues, 
 		 numericAttributesNames,
 		 nominalAttributesNames,
-		 includeNBY,
 		 wekaFile) = self.read_conf(self.conf_file_name)
 
-		self.convertToWeka(fileToConvert, classNominalValues, loanGradeNominalValues, numericAttributesNames, nominalAttributesNames, includeNBY, wekaFile)
+		#wekaFile = "../data/train_data.arff"
+
+		self.convertToWeka(fileToConvert, classNominalValues, loanGradeNominalValues, numericAttributesNames, nominalAttributesNames, wekaFile)
 
 
 if __name__ == '__main__':

@@ -11,13 +11,28 @@ __version__ = "1.0"
 
 
 import json
+import os
 
 class Converter(object):
 	"""Converter for Downloader Data"""
 
+	def __init__(self,  conf_file_name='lc_conf'):
+		self.classes = self.read_conf(conf_file_name)
 
-	def __init__(self):
-		super(Converter, self).__init__()
+	def read_conf(self, conf_file_name='lc_conf'):
+		""" Retreive parameters from the Stats configuration file """
+		script_dir = os.path.dirname(os.path.abspath(__file__))
+
+		try:
+			execfile("%s/%s" % (script_dir, conf_file_name), globals())
+		except IOError, error:
+			print "Configuration file %s not found: %s " % (conf_file_name, repr(error))
+			exit(1)
+		try:
+		 	classNominalValues = globals()["CLASS_NOMINAL_VALUES"]
+			return 	classNominalValues
+		except KeyError, error:
+			print "Missing key %s in the configufation file"
 
 	def loadDataFromFile(self, filePath):
 		""" Load Downloader data from file """
@@ -25,7 +40,7 @@ class Converter(object):
 		return json.load(f)
 
 
-	def convertData(self, dataToConvert, includeNBY):
+	def convertData(self, dataToConvert):
 		""" 
 		Convert Raw Downloader data.
 
@@ -34,7 +49,6 @@ class Converter(object):
 		But in the new dataset, every time the price hirtory is chnaging, a new entry is added.
 
 		@param dataToConvert the json data from Downloader API
-		@param includeNBY Boolean to include NBY notes or not. Set 'includeNBY' to False to leave out notes that are Not Bought Yet (NBY)
 
 		@return convertedData json file with converted data
 		"""
@@ -88,24 +102,25 @@ class Converter(object):
 				if (timeOnMarket < maxTimeOnMarket):
 					if pricePointTimestamp == datapoint['last_seen']:
 						if timeOnMarket == 0:
-							newDatapoint['noteStatus'] = 'C'
+							noteStatus = 'C'
 						else:
-							newDatapoint['noteStatus'] = 'B'
+							noteStatus = 'B'
 					else:
-						dontAppend = not includeNBY
-						newDatapoint['noteStatus'] = 'NBY'
-				else:					
-					newDatapoint['noteStatus'] = 'NB'
+						noteStatus = 'NBY'
+				else:
+					noteStatus = 'NB'
 					
-				if not dontAppend:
+				if noteStatus in self.classes:
+					newDatapoint['noteStatus'] = noteStatus
 					convertedData.append(newDatapoint)
 
 		return convertedData
 
-	def convertDataFromFile(self, fileToConvert, includeNBY):
+
+	def convertDataFromFile(self, fileToConvert):
 		""" Load file and converter Downloader data """
 		dataToConvert = self.loadDataFromFile(fileToConvert)
-		return self.convertData(dataToConvert, includeNBY)
+		return self.convertData(dataToConvert)
 
 	def dumpData(self, data, filePath):
 		""" Dumps data to file """

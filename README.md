@@ -1,4 +1,4 @@
-LC project
+Playing with Lending Club's data
 ==
 
 # Info 

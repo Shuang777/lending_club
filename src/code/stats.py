@@ -39,9 +39,8 @@ class SimpleStats(object):
 		 	classes = globals()["CLASS_NOMINAL_VALUES"]
 		 	metrics = globals()["NUMERIC_ATTRIBUTES_NAMES"]
 		 	units = globals()["NUMERIC_ATTRIBUTES_METRICS"]
-		 	includeNBY = globals()["INCLUDE_NBY"]
 		 	maxNbBuckets = globals()["MAX_NB_BUCKETS"]
-			return 	(dataFileToConvert, classes, metrics, units, includeNBY,  int(maxNbBuckets))
+			return 	(dataFileToConvert, classes, metrics, units,  int(maxNbBuckets))
 		except KeyError, error:
 			print "Missing key %s in the configufation file"
 
@@ -160,7 +159,7 @@ class SimpleStats(object):
 
 
 
-	def outputStats(self, dataset, classes, metrics, units ):
+	def outputStats(self, dataset, classes, metrics, units):
 		"""Output mean of each metric per class and some other basic stats"""
 
 		timeseries = self.prepareTimeseries(dataset, classes, metrics)
@@ -208,17 +207,12 @@ class SimpleStats(object):
 		 classes,
 		 metrics,
 		 units,
-		 includeNBY,
 		 maxNbBuckets) = self.read_conf(self.conf_file_name)
 
 		# convert raw API data file
 		converter = Converter()
 		rawData = converter.loadDataFromFile(dataFileToConvert)
-		convertedData = converter.convertData(rawData, includeNBY)
-
-		# if NBY is True then add this class label to the list
-		if includeNBY:
-			classes.append('NBY')
+		convertedData = converter.convertData(rawData)
 
 		# output various stats
 		self.outputDatasetClassDescription(classes)
