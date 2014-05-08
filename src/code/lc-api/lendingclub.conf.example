@@ -1,0 +1,9 @@
+[logging]
+directory=./lclog/
+filename=LendingClub.log
+loglevel=DEBUG
+toaddr=lc-api@googlegroups.com
+fromaddr=dev-noreply@avdacev.com
+mailhost=localhost
+mailport=25
+

@@ -1,0 +1,27 @@
+ # The API downloader file to convert. 
+DATA_TO_CONVERT = "../resources/orders_dump_2013-08-13_2013-09-10.json.small"
+
+#Nominal attributes are the ones that have discreet values. you must list the nominals valies
+NOMINAL_ATTRIBUTES_NAMES = ['loanGrade', 'noteStatus']
+CLASS_NOMINAL_VALUES = ['B', 'NB', 'NBY', 'C']
+LOAN_GRADE_NOMINAL_VALUES = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
+# Parameter to leave out or not the notes that are Not Bought Yet (NBY)
+INCLUDE_NBY = True 
+
+# Max nb of buckets that will be generated for each continuous metric of the dataset (the goal being to discretize them)
+MAX_NB_BUCKETS = 10 
+
+# Path to file where Weka will save converted downloader data
+WEKA_FILE = "../data/downloaderDataConverted.arff" 
+
+# Numeric attributes are the metrics on which you can do continous maths operations like mean, max, min, etc.
+#NUMERIC_ATTRIBUTES_NAMES = ['timeOnMarket', 'notePrice', 'loanRate', 'outstanding_principal', 'days_since_payment', 'ytm', 'credit_score_trend', 'markup_discount', 'asking_price', 'remaining_pay'] 
+NUMERIC_ATTRIBUTES_NAMES = ['timeOnMarket', 'notePrice']
+
+# metric units. /!\ should match with metrics order. Leave "" is you don't knoz zhat the unit is.
+#NUMERIC_ATTRIBUTES_METRICS = ['seconds', 'USD', "", "", "", "", "", "", "", ""] 
+NUMERIC_ATTRIBUTES_METRICS = ['seconds', 'USD']
+
+# The class attribute is used by Weka to build a Machine Learning model
+CLASS_NAME = 'noteStatus'
