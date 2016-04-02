@@ -4,11 +4,9 @@ import datetime
 import time
 import logging
 
-import auth
 from lc_logging import init_logging
 from downloader import Downloader
 from mongo_manager import MongoManager
-
 
 def weka_friendly(record):
     """ Weka is finicky and doesnt like certain characters, so clean them up
@@ -54,8 +52,6 @@ def parse_commandline_args():
     arg_parser.add_argument(
         '--filename', metavar='o', type=str)
     arg_parser.add_argument(
-        '--authfile', metavar='f', type=str)
-    arg_parser.add_argument(
         '--config', metavar='c', type=str, default='lendingclub.conf')
     arg_parser.add_argument(
         '--username', metavar='u', type=str)
@@ -78,10 +74,6 @@ def run():
     logging.info(' started downloader with action: %s', args.action)
     logging.info(' ---------- ')
 
-    # Load the authfile if specified
-    if args.authfile:
-        auth.load_authfile(args.authfile)
-
     if args.action == "update_orders":
         downloader = Downloader(username=args.username,
                                 password=args.password,
@@ -98,7 +90,7 @@ def run():
             mm = MongoManager()
             mm.update_orders(orders)
             logging.info('%s orders updated in mongo', len(orders))
-
+        
         if args.filename:
             write_csv(orders, args.filename)
             logging.info('finished writing to %s', args.filename)
@@ -106,7 +98,7 @@ def run():
     elif args.action == "update_loans":
         downloader = Downloader()
         loans = downloader.download_historical_loan_data()
-
+    
         if not args.skip_db:
             mm = MongoManager()
             mm.update_loans(loans)

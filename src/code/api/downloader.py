@@ -11,7 +11,6 @@ from urllib2 import build_opener
 from urllib2 import HTTPCookieProcessor
 from urllib2 import HTTPSHandler
 
-import auth
 from data_model import parse_loan_data_from_file
 
 
@@ -20,7 +19,7 @@ NOTES_URL = 'https://www.lendingclub.com/foliofn/browseNotesAj.action'
 QUERY_PARAMS_URL = \
     'https://www.lendingclub.com/foliofn/tradingInventory.action'
 LOGIN_URL = 'https://www.lendingclub.com/account/login.action'
-LOGGED_IN_VALIDATION = '<title>Account Summary - Lending Club</title>'
+LOGGED_IN_VALIDATION = 'Welcome'
 
 LOAN_DATA_CSV_URL = 'https://www.lendingclub.com/' + \
     'fileDownload.action?file=LoanStatsNew.csv&type=gen'
@@ -41,7 +40,6 @@ MAX_SLEEP = 4
 
 
 def build_note_info_url(note_id, loan_id, order_id):
-
     return NOTE_INFO_BASE_URL + \
         'loan_id=%s&order_id=%s&note_id=%s' % (loan_id, order_id, note_id)
 
@@ -55,9 +53,9 @@ class Downloader(object):
         self.user_agent = user_agent
         self.debug = debug
 
-        # Try setting the username from args, if missing check the authfile
-        self.username = username or auth.lc_username
-        self.password = password or auth.lc_password
+        # Try setting the username from args
+        self.username = username
+        self.password = password
         self.logged_in = False
 
         self.cookie_jar = CookieJar()
@@ -85,6 +83,7 @@ class Downloader(object):
         if method == 'GET':
             if data:
                 url += "?" + urlencode(data, True)
+            print url
             response = self.url_opener.open(url)
 
         elif method == 'POST':
@@ -220,22 +219,40 @@ class Downloader(object):
         request_params = {
             'mode': 'search',
             'search_from_rate': '0.04',
-            'search_to_rate': '0.26',
-            'search_status': ['status_always_current',
-                              'satus_current',
-                              'status_late_16_30',
-                              'status_late_31_120'],
-            'search_remaining_payments': '60',
-            'x': '23',
-            'y': '10',
+            'search_to_rate': '0.29',
+            'fil_search_term':['term_36',
+                               'term_60'],
+            'search_loan_term':['term_36',
+                                'term_60'],
+            'opr_min':0.00,
+            'opr_max':'Any',
+            'loan_status':['loan_status_issued',
+                           'loan_status_late_16_30',
+                           'loan_status_current',
+                           'loan_status_late_31_120',
+                           'loan_status_ingrace'],
+            'remp_min':1,
+            'remp_max':60,
+            'askp_min':0.00,
+            'askp_max':'Any',
+            'credit_score_min':600,
+            'credit_score_max':850,
+            'ytm_min':0,
+            'ytm_max':'Any',
+            'credit_score_trend':['UP',
+                                  'DOWN',
+                                  'FLAT'],
+            'markup_dis_min':-100,
+            'markup_dis_max':100,
+            'ona_min':25,
+            'ona_max':'Any'
         }
-
         logging.debug('Setting up the query params..')
 
         self.open_url(QUERY_PARAMS_URL, request_params)
 
-    def get_page_of_notes(self, sort='ytm', sort_dir='desc',
-                          offset=0, limit=10, retries=5):
+    def get_page_of_notes(self, sort='opa', sort_dir='asc',
+                          offset=0, limit=15, retries=5):
         """ Given a session cookie, get a page of results in a JSON format """
 
         request_params = {
@@ -274,8 +291,7 @@ class Downloader(object):
 
         return {}
 
-    def download_data(self, max_records=1000, pagesize=1000,
-                      ignore_neg_ytm=False):
+    def download_data(self, max_records=1000, pagesize=1000):
         """ Paginate through enough pages of results to get the desired
         number of records. Optionally ignore negative YTM to reduce
         the result set.
@@ -293,6 +309,7 @@ class Downloader(object):
 
         # How many results match the query?
         logging.info('Fetching the total matching record count for the query')
+
         total_record_count = int(
             self.get_page_of_notes(limit=1).get(RECORD_COUNT_KEY, 0))
 
@@ -312,12 +329,6 @@ class Downloader(object):
             # Set the query arguments and fetch the data in a nice dict
             query_args = {'offset': offset, 'limit': pagesize, }
 
-            if ignore_neg_ytm:
-                # Start with positive YTM and descend,
-                # this allows ignoring negatives
-                query_args['sort'] = 'ytm'
-                query_args['sort_dir'] = 'desc'
-
             fetched_data = self.get_page_of_notes(**query_args)
 
             # Break out early if we're not getting sensible results
@@ -329,15 +340,6 @@ class Downloader(object):
                 RESULT_SET_KEY, {}).get(LOANS_KEY, [])
 
             for record in fetched_records:
-
-                # Break out if we've fetched all of the positive YTM records
-                if ignore_neg_ytm and (
-                        (record.get('ytm') == 'null') or
-                        (float(record.get('ytm', 0)) < 0)):
-
-                    logging.info('Fetched all %s records with a positive YTM',
-                                 len(all_records))
-                    return all_records
 
                 record_id = record.get('noteId')
                 if record_id in all_records:
