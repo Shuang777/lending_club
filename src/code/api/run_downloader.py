@@ -46,9 +46,9 @@ def parse_commandline_args():
     arg_parser = argparse.ArgumentParser(
         description='Welcome to Lending Club!')
     arg_parser.add_argument(
-        '--max_records', metavar='n', type=int, default=1000000)
+        '--max-records', metavar='n', type=int, default=1000000)
     arg_parser.add_argument(
-        '--page_size', metavar='p', type=int, default=10)
+        '--page-size', metavar='p', type=int, default=10)
     arg_parser.add_argument(
         '--filename', metavar='o', type=str)
     arg_parser.add_argument(
@@ -60,7 +60,7 @@ def parse_commandline_args():
     arg_parser.add_argument(
         '--action', metavar='a', type=str, default='update_orders')
     arg_parser.add_argument('--debug', action='store_true')
-    arg_parser.add_argument('--skip_db', action='store_true')
+    arg_parser.add_argument('--skip-db', action='store_true')
 
     return arg_parser.parse_args()
 
@@ -73,8 +73,9 @@ def run():
     logging.info(' ---------- ')
     logging.info(' started downloader with action: %s', args.action)
     logging.info(' ---------- ')
-
-    if args.action == "update_orders":
+    
+    if args.action == "download_notes":
+        mm = MongoManager()
         downloader = Downloader(username=args.username,
                                 password=args.password,
                                 debug=args.debug)
@@ -82,7 +83,18 @@ def run():
         orders = downloader.download_data(
             max_records=args.max_records,
             pagesize=args.page_size,
-            ignore_neg_ytm=False)
+            mongo_manager=mm)
+
+        logging.info('%s records fetched', len(orders))
+
+    elif args.action == "update_orders":
+        downloader = Downloader(username=args.username,
+                                password=args.password,
+                                debug=args.debug)
+
+        orders = downloader.download_data(
+            max_records=args.max_records,
+            pagesize=args.page_size)
 
         logging.info('%s records fetched', len(orders))
 

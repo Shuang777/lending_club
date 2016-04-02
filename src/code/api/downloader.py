@@ -2,6 +2,8 @@ import json
 import random
 import time
 import logging
+import codecs
+from sets import Set
 
 from cookielib import CookieJar
 from getpass import getpass
@@ -27,7 +29,8 @@ LOAN_DATA_CSV_TMPFILE = '/tmp/loan_stats_new.csv'
 IN_FUNDING_DATA_CSV = 'https://www.lendingclub.com/' + \
     'fileDownload.action?file=InFunding2StatsNew.csv&type=gen'
 
-NOTE_INFO_BASE_URL = 'https://www.lendingclub.com/foliofn/loanPerf.action?'
+NOTE_INFO_BASE_URL = 'https://www.lendingclub.com/foliofn/browseNotesLoanPerf.action'
+LOAN_INFO_BASE_URL = 'https://www.lendingclub.com/foliofn/loanDetail.action'
 
 # Yes I am Chrome.
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) ' + \
@@ -83,7 +86,6 @@ class Downloader(object):
         if method == 'GET':
             if data:
                 url += "?" + urlencode(data, True)
-            print url
             response = self.url_opener.open(url)
 
         elif method == 'POST':
@@ -291,7 +293,77 @@ class Downloader(object):
 
         return {}
 
-    def download_data(self, max_records=1000, pagesize=1000):
+    def get_note_details(self, record, retries=2):
+        request_params = {
+            'loan_id': record.get('loanGUID'),
+            'order_id': record.get('orderId'),
+            'note_id': record.get('noteId'),
+            'showfoliofn': 'true'
+        }
+        attempt = 1
+        while attempt <= retries:
+            try:
+                response = self.open_url(NOTE_INFO_BASE_URL, request_params)
+                response_data = response.read()
+                f = codecs.open('note.txt', mode="w", encoding="utf-8")
+                f.write(response_data)
+                f.close()
+
+                #json_data = json.loads(response_data)
+                #query_status = json_data.get(QUERY_STATUS_KEY)
+                #if query_status == 'success':
+                #    return json_data
+                return {}
+            except Exception as e:
+                log_line = 'get_note_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
+                    attempt, retries, e, response_data)
+                logging.warning(log_line)
+            else:
+                log_line = 'get_note_details: [%d/%d] Failed to fetch data. \n RESP: %s' % (
+                    attempt, retries, json_data)
+                logging.warning(log_line)
+
+            attempt += 1
+        # Escalate logging to ERROR if we fail fetching after many retries
+        logging.critical('Error fetching page of notes after %d tries.\n > %s',
+                         retries, log_line)
+
+        return {}
+
+    def get_loan_details(self, record, retries=2):
+        request_params = {
+            'loan_id': record.get('loanGUID')
+        }
+        attempt = 1
+        while attempt <= retries:
+            try:
+                response = self.open_url(LOAN_INFO_BASE_URL, request_params)
+                response_data = response.read()
+                f = codecs.open('loan.txt', mode="w", encoding="utf-8")
+                f.write(response_data)
+                f.close()
+                #json_data = json.loads(response_data)
+                #query_status = json_data.get(QUERY_STATUS_KEY)
+                #if query_status == 'success':
+                #    return json_data
+                return {}
+            except Exception as e:
+                log_line = 'get_loan_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
+                    attempt, retries, e, response_data)
+                logging.warning(log_line)
+            else:
+                log_line = 'get_loan_details: [%d/%d] Failed to fetch data. \n RESP: %s' % (
+                    attempt, retries, json_data)
+                logging.warning(log_line)
+
+            attempt += 1
+        # Escalate logging to ERROR if we fail fetching after many retries
+        logging.critical('Error fetching page of notes after %d tries.\n > %s',
+                         retries, log_line)
+
+        return {}
+
+    def download_data(self, max_records=1000, pagesize=1000, mongo_manager=None):
         """ Paginate through enough pages of results to get the desired
         number of records. Optionally ignore negative YTM to reduce
         the result set.
@@ -319,6 +391,8 @@ class Downloader(object):
                      record_limit, total_record_count)
 
         all_records = {}
+        records_set = Set()
+
         offset = 0
 
         while offset < record_limit:
@@ -342,10 +416,18 @@ class Downloader(object):
             for record in fetched_records:
 
                 record_id = record.get('noteId')
-                if record_id in all_records:
-                    raise KeyError("Looks like we got a duplicate record: %s" %
-                                   record)
-                all_records[record_id] = record
+                if record_id in records_set:
+                    logging.warning('Looks like we got a duplicate record: %s', record)
+                if mongo_manager :
+                    note_detail = self.get_note_details(record)
+                    loan_detail = self.get_loan_details(record)
+                    exit()
+                    record_detail = self.format_record_detail(note_detail,loan_detail)
+                    mongo_manager.add_note_detail(record_detail)
+                else:
+                    all_records[record_id] = record
+
+                records_set.add(record_id)
 
             offset += pagesize
 
