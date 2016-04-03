@@ -365,6 +365,44 @@ class Downloader(object):
         formated.update(note_detail)
         return formated
 
+    def download_note_details(self, mongo_manager, pagesize=250):
+        """ download note details from lc using records stored in mongo_manager 
+        """
+        
+        logging.info('Fetching records from mongo_manager')
+
+        all_record_ids = mongo_manager.get_records()
+
+        total_record_count = len(all_record_ids)
+
+        logging.info('Fetched %s record', total_record_count)
+
+        self.login()
+        logging.info('Start downloading at %s' % str(datetime.now()))
+        
+        count = 1
+        page_record_details = {}
+        start_time = time.time()
+
+        for note_id, record_ids in all_record_ids.iteritems():
+
+            note_detail = self.get_note_details(record_ids)
+            loan_detail = self.get_loan_details(record_ids)
+            record_detail = self.format_record_detail(note_id, note_detail, loan_detail)
+            page_record_details[note_id] = record_detail
+        
+            if (count % pagesize == 0):
+                mongo_manager.add_note_details(page_record_details)
+                logging.info('Fetched %s records, %.2f mins elapsed..', count, (time.time() - start_time)/60)
+                page_record_details = {}
+                time.sleep(1)
+
+            count = count+1
+        # end loop of record
+
+        logging.info('Fetched %s records; download complete at %s. %.2f min elapsed.', 
+                     count, str(datetime.now()), (time.time() - start_time)/60)
+
     def download_data(self, max_records=250, pagesize=250, mongo_manager=None, download_details=True):
         """ Paginate through enough pages of results to get the desired
         number of records. Optionally ignore negative YTM to reduce
@@ -454,7 +492,8 @@ class Downloader(object):
             offset += pagesize
         # end loop of pages
 
-        logging.info('Fetched %s records; download complete at %s. %.2f min elapsed.', len(records_set), str(datetime.now()), (time.time() - start_time)/60)
+        logging.info('Fetched %s records; download complete at %s. %.2f min elapsed.', 
+                     len(records_set), str(datetime.now()), (time.time() - start_time)/60)
 
         return all_records
 

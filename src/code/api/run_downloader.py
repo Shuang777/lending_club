@@ -87,6 +87,14 @@ def run():
             mongo_manager=mm,
             download_details=args.download_details)
 
+    elif args.action == "download_note_details":
+        mm = MongoManager()
+        downloader = Downloader(username=args.username,
+                                password=args.password,
+                                debug=args.debug)
+
+        downloader.download_note_details(mm, pagesize=args.page_size)
+
     elif args.action == "update_orders":
         downloader = Downloader(username=args.username,
                                 password=args.password,

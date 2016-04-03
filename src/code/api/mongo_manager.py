@@ -144,6 +144,22 @@ class MongoManager(object):
             start_time += interval_sec
 
         return volume_buckets
+  
+    def get_records(self):
+        cursor = self.db.records.find()
+        all_record_ids = {}
+        for document in cursor:
+            record_ids = {}
+            record_ids['orderId'] = document['order_id']
+            record_ids['noteId'] = document['note_id']
+            record_ids['loanGUID'] = document['loan_id']
+            all_record_ids[document['note_id']] = record_ids
+
+        return all_record_ids
+
+    def add_note_details(self, page_record_details):
+        for note_id, record_details in page_record_details.iteritems():
+             self.db.notedetails.insert(record_details)
 
     def add_note_ids(self, page_record_ids):
         for note_id, record_ids in page_record_ids.iteritems():
