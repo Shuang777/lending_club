@@ -4,6 +4,7 @@ import time
 import logging
 import codecs
 from sets import Set
+from datetime import datetime
 
 from cookielib import CookieJar
 from getpass import getpass
@@ -364,7 +365,7 @@ class Downloader(object):
         formated.update(note_detail)
         return formated
 
-    def download_data(self, max_records=1000, pagesize=1000, mongo_manager=None, download_details=True):
+    def download_data(self, max_records=250, pagesize=250, mongo_manager=None, download_details=True):
         """ Paginate through enough pages of results to get the desired
         number of records. Optionally ignore negative YTM to reduce
         the result set.
@@ -396,10 +397,13 @@ class Downloader(object):
 
         offset = 0
 
-        while offset < record_limit:
+        logging.info('Start downloading at %s' % str(datetime.now()))
+        start_time = time.time()
 
+        while offset < record_limit:
+            
             logging.debug('Fetched %s; getting %s more records from the site',
-                          len(all_records), pagesize)
+                          len(records_set), pagesize)
 
             # Set the query arguments and fetch the data in a nice dict
             query_args = {'offset': offset, 'limit': pagesize, }
@@ -413,7 +417,7 @@ class Downloader(object):
             # Get a list of records from the result
             fetched_records = fetched_data.get(
                 RESULT_SET_KEY, {}).get(LOANS_KEY, [])
-
+            
             page_record_details = {}
             page_record_ids = {}
 
@@ -449,6 +453,8 @@ class Downloader(object):
 
             offset += pagesize
         # end loop of pages
+
+        logging.info('Fetched %s records; download complete at %s. %.2f min elapsed.', len(records_set), str(datetime.now()), (time.time() - start_time)/60)
 
         return all_records
 
