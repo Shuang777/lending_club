@@ -145,7 +145,7 @@ class MongoManager(object):
 
         return volume_buckets
   
-    def get_records(self):
+    def get_records(self, update=True):
         cursor = self.db.records.find()
         all_record_ids = {}
         for document in cursor:
@@ -154,6 +154,11 @@ class MongoManager(object):
             record_ids['noteId'] = document['note_id']
             record_ids['loanGUID'] = document['loan_id']
             all_record_ids[document['note_id']] = record_ids
+
+        if update:  # filter out those already downloaded
+            cursor = self.db.notedetails.find()
+            for document in cursor:
+                all_record_ids.pop(document['note_id'], None)
 
         return all_record_ids
 

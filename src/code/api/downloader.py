@@ -314,7 +314,7 @@ class Downloader(object):
                     return note_info
             except Exception as e:
                 log_line = 'get_note_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
-                    attempt, retries, e, response_data)
+                    attempt, retries, e, note_info)
                 logging.warning(log_line)
             else:
                 log_line = 'get_note_details: [%d/%d] Failed to fetch data for record %s \n RESP: %s' % (
@@ -345,7 +345,7 @@ class Downloader(object):
                     return loan_info
             except Exception as e:
                 log_line = 'get_loan_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
-                    attempt, retries, e, response_data)
+                    attempt, retries, e, loan_info)
                 logging.warning(log_line)
             else:
                 log_line = 'get_loan_details: [%d/%d] Failed to fetch data for record %s \n RESP: %s' % (
