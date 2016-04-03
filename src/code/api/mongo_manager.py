@@ -144,3 +144,7 @@ class MongoManager(object):
             start_time += interval_sec
 
         return volume_buckets
+
+    def add_note_ids(self, page_record_ids):
+        for note_id, record_ids in page_record_ids.iteritems():
+             self.db.records.insert(record_ids)

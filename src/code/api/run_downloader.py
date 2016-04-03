@@ -61,6 +61,7 @@ def parse_commandline_args():
         '--action', metavar='a', type=str, default='update_orders')
     arg_parser.add_argument('--debug', action='store_true')
     arg_parser.add_argument('--skip-db', action='store_true')
+    arg_parser.add_argument('--download-details', type=bool, default=False)
 
     return arg_parser.parse_args()
 
@@ -80,12 +81,11 @@ def run():
                                 password=args.password,
                                 debug=args.debug)
 
-        orders = downloader.download_data(
+        downloader.download_data(
             max_records=args.max_records,
             pagesize=args.page_size,
-            mongo_manager=mm)
-
-        logging.info('%s records fetched', len(orders))
+            mongo_manager=mm,
+            download_details=args.download_details)
 
     elif args.action == "update_orders":
         downloader = Downloader(username=args.username,

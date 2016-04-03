@@ -14,7 +14,7 @@ from urllib2 import HTTPCookieProcessor
 from urllib2 import HTTPSHandler
 
 from data_model import parse_loan_data_from_file
-
+from lc_parser import LoanHTMLParser, NoteHTMLParser
 
 ACCOUNT_SUMMARY_URL = 'https://www.lendingclub.com/account/summary.action'
 NOTES_URL = 'https://www.lendingclub.com/foliofn/browseNotesAj.action'
@@ -38,8 +38,8 @@ DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) ' + \
     'Chrome/28.0.1500.72 Safari/537.36'
 
 # random sleep between requests (in seconds)
-MIN_SLEEP = 2
-MAX_SLEEP = 4
+MIN_SLEEP = 0
+MAX_SLEEP = 1
 
 
 def build_note_info_url(note_id, loan_id, order_id):
@@ -300,27 +300,24 @@ class Downloader(object):
             'note_id': record.get('noteId'),
             'showfoliofn': 'true'
         }
+        QUERY_STATUS_KEY = 'result'
         attempt = 1
         while attempt <= retries:
             try:
                 response = self.open_url(NOTE_INFO_BASE_URL, request_params)
-                response_data = response.read()
-                f = codecs.open('note.txt', mode="w", encoding="utf-8")
-                f.write(response_data)
-                f.close()
-
-                #json_data = json.loads(response_data)
-                #query_status = json_data.get(QUERY_STATUS_KEY)
-                #if query_status == 'success':
-                #    return json_data
-                return {}
+                response_page = response.read()
+                note_parser = NoteHTMLParser(response_page)
+                note_info = note_parser.get_info()
+                query_status = note_info.get(QUERY_STATUS_KEY)
+                if query_status == True:
+                    return note_info
             except Exception as e:
                 log_line = 'get_note_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
                     attempt, retries, e, response_data)
                 logging.warning(log_line)
             else:
                 log_line = 'get_note_details: [%d/%d] Failed to fetch data. \n RESP: %s' % (
-                    attempt, retries, json_data)
+                    attempt, retries, note_info)
                 logging.warning(log_line)
 
             attempt += 1
@@ -334,26 +331,24 @@ class Downloader(object):
         request_params = {
             'loan_id': record.get('loanGUID')
         }
+        QUERY_STATUS_KEY = 'result'
         attempt = 1
         while attempt <= retries:
             try:
                 response = self.open_url(LOAN_INFO_BASE_URL, request_params)
-                response_data = response.read()
-                f = codecs.open('loan.txt', mode="w", encoding="utf-8")
-                f.write(response_data)
-                f.close()
-                #json_data = json.loads(response_data)
-                #query_status = json_data.get(QUERY_STATUS_KEY)
-                #if query_status == 'success':
-                #    return json_data
-                return {}
+                response_page = response.read()
+                loan_parser = LoanHTMLParser(response_page)
+                loan_info = loan_parser.get_info()
+                query_status = loan_info.get(QUERY_STATUS_KEY)
+                if query_status == True:
+                    return loan_info
             except Exception as e:
                 log_line = 'get_loan_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
                     attempt, retries, e, response_data)
                 logging.warning(log_line)
             else:
                 log_line = 'get_loan_details: [%d/%d] Failed to fetch data. \n RESP: %s' % (
-                    attempt, retries, json_data)
+                    attempt, retries, loan_info)
                 logging.warning(log_line)
 
             attempt += 1
@@ -363,7 +358,13 @@ class Downloader(object):
 
         return {}
 
-    def download_data(self, max_records=1000, pagesize=1000, mongo_manager=None):
+    def format_record_detail(self, note_id, note_detail, loan_detail):
+        formated = loan_detail
+        formated['note_id'] = note_id
+        formated.update(note_detail)
+        return formated
+
+    def download_data(self, max_records=1000, pagesize=1000, mongo_manager=None, download_details=True):
         """ Paginate through enough pages of results to get the desired
         number of records. Optionally ignore negative YTM to reduce
         the result set.
@@ -413,23 +414,41 @@ class Downloader(object):
             fetched_records = fetched_data.get(
                 RESULT_SET_KEY, {}).get(LOANS_KEY, [])
 
+            page_record_details = {}
+            page_record_ids = {}
+
             for record in fetched_records:
 
-                record_id = record.get('noteId')
-                if record_id in records_set:
+                note_id = record.get('noteId')
+                if note_id in records_set:
                     logging.warning('Looks like we got a duplicate record: %s', record)
-                if mongo_manager :
-                    note_detail = self.get_note_details(record)
-                    loan_detail = self.get_loan_details(record)
-                    exit()
-                    record_detail = self.format_record_detail(note_detail,loan_detail)
-                    mongo_manager.add_note_detail(record_detail)
-                else:
-                    all_records[record_id] = record
 
-                records_set.add(record_id)
+                if mongo_manager :
+                    if (download_details):
+                        note_detail = self.get_note_details(record)
+                        loan_detail = self.get_loan_details(record)
+                        record_detail = self.format_record_detail(note_id, note_detail, loan_detail)
+                        page_record_details[note_id] = record_detail
+                    else:
+                        record_ids = {}
+                        record_ids['loan_id'] = record.get('loanGUID')
+                        record_ids['order_id'] = record.get('orderId')
+                        record_ids['note_id'] = record.get('noteId')
+                        page_record_ids[note_id] = record_ids
+                else:
+                    all_records[note_id] = record
+
+                records_set.add(note_id)
+            # end loop of record
+
+            if mongo_manager :
+                if (download_details):
+                    mongo_manager.add_note_detail(page_record_details)
+                else:
+                    mongo_manager.add_note_ids(page_record_ids)
 
             offset += pagesize
+        # end loop of pages
 
         return all_records
 
