@@ -11,8 +11,8 @@ def map_message(data):
         return 'legal action'
     elif (re.search(r'Initial payment reminder|email sent|[Ss]ent email', data)):
         return 'payment reminder'
-    elif (re.search(r'[Bb]orrower (contacted|informed) | promised', data)):
-        return 'borrower contact'
+    elif (re.search(r'[Bb]orrower (contacted|informed) | promised | agreed', data)):
+        return 'borrower agreed'
     else:
         return data
 
@@ -81,8 +81,10 @@ class NoteHTMLParser(HTMLParser):
 
         elif (self.stage == 311):
             self.contact_dates.append(data.split(' ', 1)[0])
+            self.stage = 312
         elif (self.stage == 313):
             self.messages.append(map_message(data))
+            self.stage = 314
 
     def handle_endtag(self, tag):
         if (self.stage >= 111 and self.stage <= 113 and tag == "td"):
@@ -99,8 +101,6 @@ class NoteHTMLParser(HTMLParser):
         elif (self.stage == 21 and tag == "tbody"):
             self.stage = 0
 
-        elif (self.stage >= 311 and self.stage <= 313 and tag == "td"):
-            self.stage = self.stage + 1
         elif (self.stage == 314 and tag == "tr"):
             self.stage = 31
         elif (self.stage == 31 and tag == "tbody"):
@@ -280,7 +280,7 @@ if __name__ == '__main__':
     print loan_info
     print loan_info.get('result')
 
-    note_page = urllib.urlopen("note.html").read()
+    note_page = urllib.urlopen("note1.html").read()
     note_parser = NoteHTMLParser(note_page)
     note_info = note_parser.get_info()
     print note_info

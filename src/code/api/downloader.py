@@ -317,8 +317,8 @@ class Downloader(object):
                     attempt, retries, e, response_data)
                 logging.warning(log_line)
             else:
-                log_line = 'get_note_details: [%d/%d] Failed to fetch data. \n RESP: %s' % (
-                    attempt, retries, note_info)
+                log_line = 'get_note_details: [%d/%d] Failed to fetch data for record %s \n RESP: %s' % (
+                    attempt, retries, record, note_info)
                 logging.warning(log_line)
 
             attempt += 1
@@ -348,8 +348,8 @@ class Downloader(object):
                     attempt, retries, e, response_data)
                 logging.warning(log_line)
             else:
-                log_line = 'get_loan_details: [%d/%d] Failed to fetch data. \n RESP: %s' % (
-                    attempt, retries, loan_info)
+                log_line = 'get_loan_details: [%d/%d] Failed to fetch data for record %s \n RESP: %s' % (
+                    attempt, retries, record, loan_info)
                 logging.warning(log_line)
 
             attempt += 1
