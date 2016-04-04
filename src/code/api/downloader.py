@@ -97,7 +97,7 @@ class Downloader(object):
 
         if self.sleep_after_request:
             sleep_time = random.randint(MIN_SLEEP, MAX_SLEEP)
-            logging.debug('Taking a nap for %s seconds', sleep_time)
+            #logging.debug('Taking a nap for %s seconds', sleep_time)
             time.sleep(sleep_time)
 
         return response
@@ -385,6 +385,9 @@ class Downloader(object):
         start_time = time.time()
 
         for note_id, record_ids in all_record_ids.iteritems():
+
+            logging.debug('Fetching note %s, loan_id %s, order_id %s', 
+                          record_ids['noteId'], record_ids['loanGUID'], record_ids['orderId'])
 
             note_detail = self.get_note_details(record_ids)
             loan_detail = self.get_loan_details(record_ids)
