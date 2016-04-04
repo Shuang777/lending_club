@@ -3,6 +3,7 @@ import random
 import time
 import logging
 import codecs
+import socket
 from sets import Set
 from datetime import datetime
 
@@ -42,6 +43,9 @@ DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) ' + \
 MIN_SLEEP = 0
 MAX_SLEEP = 1
 
+TIMEOUT = 10
+TIMEOUT_SLEEP = 60
+TIMEOUT_RETRY = 60      # retry for one hour?
 
 def build_note_info_url(note_id, loan_id, order_id):
     return NOTE_INFO_BASE_URL + \
@@ -84,23 +88,47 @@ class Downloader(object):
         and other HTTP magic
         """
 
-        if method == 'GET':
-            if data:
-                url += "?" + urlencode(data, True)
-            response = self.url_opener.open(url)
-
-        elif method == 'POST':
-            response = self.url_opener.open(url, data=urlencode(data))
-
-        else:
+        if method != 'GET' and method != 'POST':
             raise ValueError("%s is not a valid HTTP method" % method)
 
-        if self.sleep_after_request:
-            sleep_time = random.randint(MIN_SLEEP, MAX_SLEEP)
-            #logging.debug('Taking a nap for %s seconds', sleep_time)
-            time.sleep(sleep_time)
+        attempt = 1
+        while attempt <= TIMEOUT_RETRY:
+            try:
+                if method == 'GET':
+                    if data:
+                        url += "?" + urlencode(data, True)
+                    response = self.url_opener.open(url, timeout=TIMEOUT)
 
-        return response
+                elif method == 'POST':
+                    response = self.url_opener.open(url, data=urlencode(data), timeout=TIMEOUT)
+
+                if self.sleep_after_request:
+                    sleep_time = random.randint(MIN_SLEEP, MAX_SLEEP)
+                    #logging.debug('Taking a nap for %s seconds', sleep_time)
+                    time.sleep(sleep_time)
+
+                return response
+
+            except socket.timeout as e:
+                logging.warning("Timeout error: %s, [%d/%d] while fetching url %s with data %s", 
+                                type(e), attempt, TIMEOUT_RETRY, url, data)
+            
+            except Exception as e:
+                logging.warning("Error caught: %s, [%d/%d] while fetching url %s with data %s", 
+                                type(e), attempt, TIMEOUT_RETRY, url, data)
+
+            else:
+                logging.warning("Failed to fetch url %s with data %s, [%d/%d]",
+                                url, data, attempt, TIMEOUT_RETRY)
+              
+            attempt = attempt + 1
+
+            if (attempt <= TIMEOUT_RETRY):
+                time.sleep(TIMEOUT_SLEEP)
+        
+        logging.critical('Error fetching url %s with data %s after %d tries.', url, str(data), TIMEOUT_RETRY)
+
+        return {}
 
     def verify_login(self, resp=None):
         """
@@ -268,25 +296,22 @@ class Downloader(object):
 
         QUERY_STATUS_KEY = 'result'
 
-        attempt = 1
-        while attempt <= retries:
-            try:
-                response = self.open_url(NOTES_URL, request_params)
-                response_data = response.readline()
-                json_data = json.loads(response_data)
-                query_status = json_data.get(QUERY_STATUS_KEY)
-                if query_status == 'success':
-                    return json_data
-            except Exception as e:
-                log_line = '[%d/%d]: Error parsing response: %s\n RESP: %s' % (
-                    attempt, retries, e, response_data)
-                logging.warning(log_line)
-            else:
-                log_line = '[%d/%d] Failed to fetch data. \n RESP: %s' % (
-                    attempt, retries, json_data)
-                logging.warning(log_line)
+        response = self.open_url(NOTES_URL, request_params)
+        try:
+            response_data = response.readline()
+            json_data = json.loads(response_data)
+            query_status = json_data.get(QUERY_STATUS_KEY)
+            if query_status == 'success':
+                return json_data
+        except Exception as e:
+            log_line = 'Error parsing response: %s\n RESP: %s' % (
+                e, response_data)
+            logging.warning(log_line)
+        else:
+            log_line = 'Failed to fetch data. \n RESP: %s' % (
+                json_data)
+            logging.warning(log_line)
 
-            attempt += 1
 
         # Escalate logging to ERROR if we fail fetching after many retries
         logging.critical('Error fetching page of notes after %d tries.\n > %s',
@@ -294,7 +319,7 @@ class Downloader(object):
 
         return {}
 
-    def get_note_details(self, record, retries=2):
+    def get_note_details(self, record):
         request_params = {
             'loan_id': record.get('loanGUID'),
             'order_id': record.get('orderId'),
@@ -302,60 +327,50 @@ class Downloader(object):
             'showfoliofn': 'true'
         }
         QUERY_STATUS_KEY = 'result'
-        attempt = 1
-        while attempt <= retries:
-            try:
-                response = self.open_url(NOTE_INFO_BASE_URL, request_params)
-                response_page = response.read()
-                note_parser = NoteHTMLParser(response_page)
-                note_info = note_parser.get_info()
-                query_status = note_info.get(QUERY_STATUS_KEY)
-                if query_status == True:
-                    return note_info
-            except Exception as e:
-                log_line = 'get_note_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
-                    attempt, retries, e, note_info)
-                logging.warning(log_line)
-            else:
-                log_line = 'get_note_details: [%d/%d] Failed to fetch data for record %s \n RESP: %s' % (
-                    attempt, retries, record, note_info)
-                logging.warning(log_line)
+        
+        response = self.open_url(NOTE_INFO_BASE_URL, request_params)
 
-            attempt += 1
-        # Escalate logging to ERROR if we fail fetching after many retries
-        logging.critical('Error fetching page of notes after %d tries.\n > %s',
-                         retries, log_line)
+        try:
+            response_page = response.read()
+            note_parser = NoteHTMLParser(response_page)
+            note_info = note_parser.get_info()
+            query_status = note_info.get(QUERY_STATUS_KEY)
+            if query_status == True:
+                return note_info
+        except Exception as e:
+            log_line = 'get_note_details: Error parsing response: %s\n RESP: %s' % (
+                e, response)
+            logging.warning(log_line)
+        else:
+            log_line = 'get_note_details: Failed to parse the response data for record %s' % (
+                record)
+            logging.warning(log_line)
 
         return {}
 
-    def get_loan_details(self, record, retries=2):
+    def get_loan_details(self, record):
         request_params = {
             'loan_id': record.get('loanGUID')
         }
         QUERY_STATUS_KEY = 'result'
-        attempt = 1
-        while attempt <= retries:
-            try:
-                response = self.open_url(LOAN_INFO_BASE_URL, request_params)
-                response_page = response.read()
-                loan_parser = LoanHTMLParser(response_page)
-                loan_info = loan_parser.get_info()
-                query_status = loan_info.get(QUERY_STATUS_KEY)
-                if query_status == True:
-                    return loan_info
-            except Exception as e:
-                log_line = 'get_loan_details: [%d/%d]: Error parsing response: %s\n RESP: %s' % (
-                    attempt, retries, e, loan_info)
-                logging.warning(log_line)
-            else:
-                log_line = 'get_loan_details: [%d/%d] Failed to fetch data for record %s \n RESP: %s' % (
-                    attempt, retries, record, loan_info)
-                logging.warning(log_line)
+        
+        response = self.open_url(LOAN_INFO_BASE_URL, request_params)
 
-            attempt += 1
-        # Escalate logging to ERROR if we fail fetching after many retries
-        logging.critical('Error fetching page of notes after %d tries.\n > %s',
-                         retries, log_line)
+        try:
+            response_page = response.read()
+            loan_parser = LoanHTMLParser(response_page)
+            loan_info = loan_parser.get_info()
+            query_status = loan_info.get(QUERY_STATUS_KEY)
+            if query_status == True:
+                return loan_info
+        except Exception as e:
+            log_line = 'get_loan_details: Error parsing response: %s\n RESP: %s' % (
+                e, response)
+            logging.warning(log_line)
+        else:
+            log_line = 'get_loan_details: Failed to fetch data for record %s' % (
+                record)
+            logging.warning(log_line)
 
         return {}
 
@@ -391,6 +406,10 @@ class Downloader(object):
 
             note_detail = self.get_note_details(record_ids)
             loan_detail = self.get_loan_details(record_ids)
+            if not note_detail or not loan_detail:
+                logging.warning('Failed to fetch note %s, omitting that', record_ids['noteId'])
+                continue
+
             record_detail = self.format_record_detail(note_id, note_detail, loan_detail)
             page_record_details[note_id] = record_detail
         
