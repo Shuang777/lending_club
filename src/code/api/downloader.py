@@ -150,7 +150,7 @@ class Downloader(object):
         """
         response_got = False
 
-        while response_got:
+        while not response_got:
 
             if not resp:
                 resp = self.open_url(ACCOUNT_SUMMARY_URL)
