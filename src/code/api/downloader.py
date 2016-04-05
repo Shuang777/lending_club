@@ -148,11 +148,21 @@ class Downloader(object):
         Returns: True if the we're actually logged in;
                  also updates self.logged_in
         """
+        response_got = False
 
-        if not resp:
-            resp = self.open_url(ACCOUNT_SUMMARY_URL)
+        while response_got:
 
-        resp_text = resp.read()
+            if not resp:
+                resp = self.open_url(ACCOUNT_SUMMARY_URL)
+
+            try:
+                resp_text = resp.read()
+                response_got = True
+
+            except:
+                logging.warning("verify_login: cannot read verify response")
+                
+        # end response_got
 
         # Look for a known tag that appears only for logged in users
         if resp_text.find(LOGGED_IN_VALIDATION) >= 0:
