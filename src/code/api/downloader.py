@@ -82,7 +82,7 @@ class Downloader(object):
 
         logging.info('Downloader intialized.')
 
-    def open_url(self, url, data=None, method='GET'):
+    def open_url(self, url, data=None, method='GET', verify=False):
         """
         Consistent place to introduce request throttling
         and other HTTP magic
@@ -127,7 +127,7 @@ class Downloader(object):
             if (attempt <= TIMEOUT_RETRY):
                 time.sleep(TIMEOUT_SLEEP)
 
-            if not self.verify_login():
+            if verify and not self.verify_login():
                 self.login()
         
         # end attemp
@@ -302,7 +302,7 @@ class Downloader(object):
 
         QUERY_STATUS_KEY = 'result'
 
-        response = self.open_url(NOTES_URL, request_params)
+        response = self.open_url(NOTES_URL, request_params, verify = True)
         try:
             response_data = response.readline()
             json_data = json.loads(response_data)
@@ -334,7 +334,7 @@ class Downloader(object):
         }
         QUERY_STATUS_KEY = 'result'
         
-        response = self.open_url(NOTE_INFO_BASE_URL, request_params)
+        response = self.open_url(NOTE_INFO_BASE_URL, request_params, verify = True)
 
         try:
             response_page = response.read()
@@ -360,7 +360,7 @@ class Downloader(object):
         }
         QUERY_STATUS_KEY = 'result'
         
-        response = self.open_url(LOAN_INFO_BASE_URL, request_params)
+        response = self.open_url(LOAN_INFO_BASE_URL, request_params, verify = True)
 
         try:
             response_page = response.read()
