@@ -46,7 +46,6 @@ MAX_SLEEP = 1
 TIMEOUT = 10
 TIMEOUT_SLEEP = 60
 TIMEOUT_RETRY = 60      # retry for one hour?
-TIMEOUT_LOGIN = 8      # check and re-login every 10 mins
 
 def build_note_info_url(note_id, loan_id, order_id):
     return NOTE_INFO_BASE_URL + \
@@ -128,9 +127,8 @@ class Downloader(object):
             if (attempt <= TIMEOUT_RETRY):
                 time.sleep(TIMEOUT_SLEEP)
 
-            if (attempt % TIMEOUT_LOGIN == 0):
-                if not self.verify_login():
-                    self.login()
+            if not self.verify_login():
+                self.login()
         
         # end attemp
         
