@@ -46,6 +46,7 @@ MAX_SLEEP = 1
 TIMEOUT = 10
 TIMEOUT_SLEEP = 60
 TIMEOUT_RETRY = 60      # retry for one hour?
+TIMEOUT_LOGIN = 8      # check and re-login every 10 mins
 
 def build_note_info_url(note_id, loan_id, order_id):
     return NOTE_INFO_BASE_URL + \
@@ -95,9 +96,10 @@ class Downloader(object):
         while attempt <= TIMEOUT_RETRY:
             try:
                 if method == 'GET':
+                    dataurl = url
                     if data:
-                        url += "?" + urlencode(data, True)
-                    response = self.url_opener.open(url, timeout=TIMEOUT)
+                        dataurl += "?" + urlencode(data, True)
+                    response = self.url_opener.open(dataurl, timeout=TIMEOUT)
 
                 elif method == 'POST':
                     response = self.url_opener.open(url, data=urlencode(data), timeout=TIMEOUT)
@@ -125,6 +127,12 @@ class Downloader(object):
 
             if (attempt <= TIMEOUT_RETRY):
                 time.sleep(TIMEOUT_SLEEP)
+
+            if (attempt % TIMEOUT_LOGIN == 0):
+                if not self.verify_login():
+                    self.login()
+        
+        # end attemp
         
         logging.critical('Error fetching url %s with data %s after %d tries.', url, str(data), TIMEOUT_RETRY)
 
